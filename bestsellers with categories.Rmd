@@ -1,0 +1,385 @@
+---
+title: "<b> Amazon Top 50 Bestselling Books 2009 - 2019 </b>"
+author: "Muhammad Wildan Firdaus"
+date: "`r format (Sys.Date())`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: no
+    df_print: paged
+    theme: united
+    highlight: pygments
+  html_notebook:
+    toc: yes
+    toc_depth: '2'
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+`**tidyverse**` adalah kumpulan *package* yang dibuat oleh **Hadley Wickham** dkk untuk kebutuhan `data science` menggunakan R. Dalam *package* ini, sudah memuat 8 *core tidyverse package* yaitu :
+
+1. `ggplot2` : Untuk visualisasi data
+2. `dplyr` : Untuk manipulasi data
+3. `tidyr` : Untuk merapikan data
+4. `readr` : Untuk pengaturan impor data
+5. `purrr` : Untuk *functional programming*
+6. `tibble` : Untuk penataan ulang yang lebih modern dari data
+7. `stringr` : Untuk *string*
+8. `forcats` : Untuk kateogori
+
+Dari 8 *package* itu, kita akan menggunakan `ggplot2`, `dplyr`, `tidyr` dan `readr`.
+
+```{r}
+library(ggthemes)
+library(scales)
+library(ggpubr)
+```
+
+# Latar Belakang {.tabset}
+## Gambaran Dataset
+
+Data yang digunakan dalam proyek ini adalah sebuah dataset dari Kaggle.com tentang 50 Buku Terlaris Setiap Tahun dari 2009 - 2019 yang dijual di Amazon.com.
+
+## Kenapa Harus Visualisasi?
+
+Tujuan utama dari **visualisasi data** adalah untuk menyampaikan dan mengomunikasikan informasi dari data secara jelas dan mudah dipahami kepada pengguna melalui grafik informasi yang tepat, seperti tabel dan grafik. Visualisasi data yang efektif membantu pengguna untuk memahami data dengan lebih mudah sebagai bahan untuk melakukan analisis dan penalaran tentang data dan bukti.
+
+Data yang ditampilkan secara visual memungkinkan banyak orang untuk memahami data dengan lebih cepat. Penelitian menunjukkan bahwa orang mengingat 80% dari apa yang mereka lihat, tapi cuma 20% dari apa yang mereka baca. Otak kita dapat mengingat gambar jutaan kali lebih cepat daripada kata. Dan karena itu, data yang divisualkan dapat membantu pengguna dalam mengingat dan mencerna informasi.
+
+## Hasil Akhir
+
+Tujuan dari visualisasi dari dataset yang dipilih ini adalah untuk memberikan wawasan sederhana dari data
+
+# **Input Data**
+```{r}
+book <- read.csv("bestsellers with categories.csv")
+glimpse(book)
+```
+
+# Eksplorasi Data (*Data Exploration*)
+```{r}
+#cek missing value dalam datast
+colSums(is.na(book))
+```
+
+```{r}
+book <- book %>% 
+  mutate(Genre = as.factor(Genre)) %>%
+  arrange(Year)
+```
+
+Penjelasan kolom dataset :
+
+1. Name : Judul buku
+2. Author : Penulis buku
+3. User.Rating : Penilaian dari para pembaca (1-5)
+4. Reviews : Banyak ulasan yang tulis oleh pembaca
+5. Price : Harga (dalam Dollar Amerika)
+6. Year : Tahun terbit
+7. Genre : Genre buku (Fiksi / Non-Fiksi)
+
+# Melihat Nama *Author* atau Penulis Buku
+```{r}
+book %>% 
+  count(Author) %>% 
+  arrange(Author)
+```
+Ketika dilihat secara seksama, maka *author* dengan nama **J. K. Rowling** dan **George R. R. Martin** masing-masing memiliki cara penulisan yang berbeda sebanyak 2 nama yang sebenarnya itu hanya mewakili 1 nama saja. Untuk itu, kita coba membersihkan dan mengatur agar namanya menjadi sama.
+
+```{r}
+book %>% 
+  filter(Author %in% c("J.K. Rowling", "J. K. Rowling", "George R. R. Martin", "George R.R. Martin")) %>% 
+  select(Author) %>% 
+  count(Author)
+```
+
+```{r}
+book[book == "J.K. Rowling"] <- "J. K. Rowling"
+book[book == "George R.R. Martin"] <- "George R. R. Martin"
+
+book %>% 
+  filter(Author %in% c("J.K. Rowling", "J. K. Rowling", "George R. R. Martin", "George R.R. Martin")) %>% 
+  select(Author) %>% 
+  count(Author)
+```
+
+
+# **Visualisasi Data**
+## Mengetahui Persentase dan Jumlah Buku Berdasarkan Genre {.tabset}
+
+Pada bagian ini, disajikan persentase dari dua genre buku yaitu Fiksi (*Fiction*) dan Non-Fiksi (*Non-Fiction*) menggunakan **pie chart** dan **bar chart** untuk visualisasi datanya.
+
+### *Pie Chart*
+
+**NOTE** :  
+**Pie chart** pada dasarnya tidak direkomendasikan untuk digunakan dalam visualisasi data. Pada R, fitur ini sudah dibatasi karena tidak banyak informasi yang bisa diperoleh dari pie chart itu sendiri serta penggunaan pie chart akan menimbulkan bias karena pembaca bisa saja salah menangkap terkait jumlah sampel yang divisualisasikan. Selain itu, pie chart tidak dapat digunakan untuk membandingkan lebih dari satu buah distribusi, sehingga penulis lebih menyarankan penggunaan bar chart dan dot plot untuk melihat distribusi variabel kategori.
+
+```{r}
+book %>% 
+  select(Name, Genre) %>%
+  group_by(Genre) %>%
+  summarise(Count = n(), .groups = "drop") %>% 
+  mutate(Percentage = prop.table(Count)*100) %>% 
+  
+  # melalukan visualisasi data dengan pie chart dari library "ggplot2"
+  ggplot(aes(x = "", y = Percentage, fill = Genre)) +
+  geom_bar(stat = "identity", width = 1.12) +
+  scale_fill_manual(values = c("#457b9d", "#fca311")) +
+  coord_polar(theta = "y", start = pi / 3) +
+  theme_pander() + 
+  geom_label(aes(label = paste0(round(Percentage,2), "%")),
+             position = position_stack(vjust = 0.5)) +
+  theme(plot.title = element_text(hjust=0.5)) + 
+  labs(title = "Percentage of Genre",
+       y = NULL)
+```
+
+### *Bar Chart*
+```{r}
+book %>% 
+  select(Name, Genre) %>%
+  group_by(Genre) %>%
+  summarise(Count = n(), .groups = "drop") %>% 
+  mutate(Percentage = prop.table(Count)*100) %>% 
+  
+  # melalukan visualisasi data dengan bar chart dari library "ggplot2"
+  ggplot(aes(x = Genre, y = Count, fill = Genre)) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = Count, label = Count),
+            vjust = 1.6, color = "black", size = 5) +
+  scale_fill_manual(values = c("#457b9d", "#fca311")) +
+  theme_pander()
+```
+
+### *Population/Pyramid Chart*
+```{r}
+book %>% 
+  select(Year, Genre) %>% 
+  group_by(Genre, Year) %>% 
+  summarise(count = n()) %>% 
+  pivot_wider(names_from = Genre,
+              values_from = count) %>% 
+  mutate(Fiction = -Fiction,
+         Year = as.factor(Year)) %>% 
+  arrange(Year) %>% 
+  
+  # visualisasi dengan 
+  ggplot(aes(x = Year)) +
+  geom_bar(stat = "identity",
+           width = 0.8,
+           fill = "#457b9d",
+           aes(y = Fiction)) +
+  geom_text(aes(x = Year,
+                y = Fiction + 2,
+                label = abs(Fiction)),
+            colour = "white") +
+  geom_bar(stat = "identity",
+           width = 0.8,
+           fill = "#fca311",
+           aes(y = `Non Fiction`)) +
+  geom_text(aes(x = Year,
+                y = `Non Fiction` - 2,
+                label = `Non Fiction`),
+            colour = "black") +
+  ylim(-35, 35) +
+  coord_flip() +
+  annotate("text", x = 0.1, y = -5, hjust = 0.3, vjust = -0.3,
+           label="Fiction", colour = "#457b9d", fontface = 2) +
+  annotate("text", x = 0.1, y = 5, hjust = 0.4, vjust = -0.3,
+           label="Non Fiction", colour = "#fca311", fontface = 2) +
+  # pada kasus ini, label x dan y tempatnya terbaik karena kita melakukan ylim(-35, 35) untuk mengubah posisi grafik yang tadinya horizontal menjadi vertikal
+  labs(y = "Genre Buku",
+       x = "Tahun") +
+  theme(axis.text.x = element_blank(),
+        panel.background = element_rect(fill = NA),
+        panel.grid.major = element_line(linetype = "dashed", colour = "grey"))
+
+options(repr.plt.width = 10, repr.plt.height = 2)
+```
+
+## 
+Dari tiga grafik atau *chart* di atas, kita bisa menggunakan *pie chart* untuk melihat porsi atau persentase dari masing-masing kategori genre. Selain itu, kita juga bisa menggunakan *bar chart* untuk melihat jumlah buku dari masing-masing kategori genre buku. Kita dapat menyimpulkan dari dua grafik diatas bahwa persentase untuk buku bergenre fiksi (*fiction*) sebesar 43.64 % dengan jumlah buku sebanyak 240 buku (diwakilkan dengan warna biru), sedangkan untuk buku bergenre non-fiksi (*non fiction*) memiliki persentase sebesar 56.36 % dengan jumlah buku sebanyak 310 buku (diwakilkan dengan warna kuning).
+
+Untuk grafik yang ketiga adalah *Population/Pyramid Chart* yang bisa digunakan untuk melihat jumlah buku dari masing-masing kategori (*Fiction* dan *Non-Fiction*) dan dikelompokkan setiap tahun. Visualisasi seperti ini lebih mudah dipahami apabila ingin melihat lebih detail jumlah buku dari setiap kategori. Sebenarnya fungsi dari *Population/Pyramid Chart* untuk memvisualkan data penduduk. Tetapi karena dengan *chart* atau grafik ini kita bisa melihat lebih spesifik, maka bisa kita gunakan saja supaya lebih mudah untuk memahami lebih detail.
+
+
+## Melihat Jumlah Buku Berdasarkan Rating yang Didapat
+### *Bar Chart*
+```{r}
+book %>% 
+  select(User.Rating) %>% 
+  group_by(User.Rating) %>% 
+  summarise(count = n()) %>%
+  mutate(User.Rating = as.factor(User.Rating)) %>% 
+  arrange(-User.Rating) %>% 
+  
+  ggplot(aes(x = User.Rating, y = count, fill = User.Rating)) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = count, label = count),
+            vjust = 0.1, size = 3)  +
+  theme(legend.position = "none")
+```
+
+### *Sorted Bar Chart*
+Grafik di bawah ini akan menunjukkan data yang sudah diurutkan berdasarkan banyaknya buku dalam setiap penilian
+```{r}
+book %>% 
+  select(User.Rating) %>% 
+  group_by(User.Rating) %>% 
+  summarise(count = n()) %>%
+  mutate(User.Rating = as.factor(User.Rating)) %>% 
+  arrange(-User.Rating) %>% 
+  
+  ggplot(aes(x = count, y = reorder(User.Rating, count), fill = User.Rating)) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = count),
+            hjust = 1, size = 3)  +
+  labs(y = "Rating",
+       x = "Jumlah Buku") +
+  theme(legend.position = "none")
+```
+
+Dari *bar chart* di atas bisa ditarik kesimpulan :
+
+1. Jumlah buku pada *user rating* atau penilaian pembaca tertinggi, yaitu 4.9, sebesar 52 buku.
+2. *User rating* dengan nilai 4.8 menjadi penilaian dengan jumlah buku terbanyak, yaitu 127 buku
+3. *User rating* dengan nilai 3.3 dan 3.6 menjadi penilaian dengan jumlah buku paling sedikit, yaitu masing-masing 1 buku.
+
+## Harga (*Price*) Buku
+Pada grafik dibawah ini akan menampilkan 5 buku dengan harga tertinggi
+```{r class.source='fold-hide', fig.height=5, fig.width=8}
+p1 <- book %>% 
+  filter(Genre == "Fiction") %>% 
+  arrange(-Price) %>% 
+  select(Name, Author, Price) %>% 
+  distinct(Name, Author, Price) %>% 
+  top_n(5) %>% 
+  
+  ggplot(aes(Price, reorder(Name, Price), fill = Price)) +
+  geom_col() +
+  scale_fill_gradient(low = "#457b9d", high = "#fca311") +
+  scale_y_discrete(labels = wrap_format(45)) +
+  geom_text(aes(label = Price),
+            hjust = 1.5) +
+  labs(title = "Fiction Book (Buku Fiksi)",
+       y = "Book Name") +
+  theme(legend.position = "none")
+
+p2 <- book %>% 
+  filter(Genre == "Non Fiction") %>% 
+  arrange(-Price) %>% 
+  select(Name, Author, Price) %>% 
+  distinct(Name, Author, Price) %>% 
+  top_n(5) %>% 
+  
+  ggplot(aes(Price, reorder(Name, Price), fill = Price)) +
+  geom_col() +
+  scale_fill_gradient(low = "#457b9d", high = "#fca311") +
+  scale_y_discrete(labels = wrap_format(45)) +
+  geom_text(aes(label = Price),
+            hjust = 1.5) +
+  labs(title = "Non Fiction (Buku Non Fiksi)",
+       y = "Book Name") +
+  theme(legend.position = "none")
+
+ggarrange(p1, p2,
+          ncol = 1, nrow = 2)
+```
+
+## Ulasan (*Reviews*) Buku
+Grafik atau *chart* yang digunakan dibawah ini adalah *treemap chart*. *Treemap Chart* adalah tipe visualisasi data yang sangat berguna untuk menampilkan data hierarki. Pada *treemap* ini, setiap item diwakili oleh bentuk persegi panjang, dimana persegi panjang yang lebih kecil mewakili sub-grup. Warna dan ukuran persegi panjang biasanya berkorelasi dengan struktur data, yang dapat memudahkan untuk melihat kelompok dan ukurannya. *Treemap chart* ini sangat bagus untuk menyoroti kontribusi setiap item secara keseluruhan, dalam sebuah data.
+```{r class.source='fold-hide'}
+library(treemapify)
+
+book %>% 
+  filter(Genre == "Fiction") %>% 
+  arrange(-Reviews) %>% 
+  select(Name, Author, Reviews, User.Rating) %>% 
+  distinct(Name, Author, Reviews, User.Rating) %>% 
+  head(5) %>% 
+  
+  ggplot(aes(area = Reviews, label = Name, fill = Name, subgroup = Author, subgroup2 = Reviews, subgroup3 = User.Rating)) +
+  geom_treemap() + 
+  geom_treemap_subgroup3_border(colour = "#457b9d", size = 3) +
+  geom_treemap_subgroup_text(
+    place = "topleft",
+    colour = "black",
+    reflow = T,
+    size = 14,
+    alpha = 0.8,
+  ) +
+  geom_treemap_subgroup2_text(
+    colour = "firebrick",
+    alpha = 1,
+    size = 17,
+    fontface = "italic"
+  ) +
+  geom_treemap_subgroup3_text(
+    place = "topright",
+    colour = "black",
+    alpha = 0.6,
+    size = 14
+  ) +
+  geom_treemap_text(
+    colour = "white", 
+    place = "middle",
+    size = 17,
+    fontface = "bold",
+    reflow = T) +
+  theme(legend.position = "none")
+```
+
+Keterangan :
+
+1. Pojok kiri atas : *Author* atau penulis buku  
+2. Pojok kanan atas : *User rating* atau penilaian buku dari pembaca  
+3. Tengah : *Name* atau judul buku  
+4. Bahwah tengah : *Reviews* atau jumlah ulasan yang didapat  
+
+## Melihat Hubungan antar Variabel atau Kolom
+### Melihat Korelasi antar Variabel Numerik
+Kita bisa melihat korelasi antar variabel dengan cepat menggunakan *library* `GGally` dengan *function* `ggcorr`.
+```{r}
+library(GGally)
+ggcorr(book[3:5], label = T)
+```
+Bisa dilihat bahwa antara variabel *User.Rating*, *Reviews* dan *Price* tidak terlihat adanya korelasi. Supaya lebih jelas, mari kita lihat satu per satu menggunakan *scatter plot*.
+
+### *User.Rating* dengan *Reviews*
+```{r}
+book %>% 
+  ggplot(aes(User.Rating, Reviews, col = Genre)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("#457b9d", "#fca311"))
+```
+
+### *User.Rating* dengan *Price*
+```{r}
+book %>% 
+  ggplot(aes(User.Rating, Price, col = Genre)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("#457b9d", "#fca311"))
+```
+
+### *Price* dengan *Reviews*
+```{r}
+book %>% 
+  ggplot(aes(Price, Reviews, col = Genre)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("#457b9d", "#fca311"))
+```
+
+Referensi :
+
+1. dataset : https://www.kaggle.com/sootersaalu/amazon-top-50-bestselling-books-2009-2019  
+2. all kind of chart in R : https://www.r-graph-gallery.com/all-graphs.html  
